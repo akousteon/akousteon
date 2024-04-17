@@ -8,3 +8,4 @@ Les fonctionalités visés sont:
 - Gérer les tours de parole avec des règles (priorisation, limite de temps...) ;
 - Exporter les stats en format facilement exploitable (ex CSV) ;
 
+Ce dépot concerne ma version PC du logiciel. Des version Web et Android sont prévue une fois les fonctionnaliltés de base implémentées.
