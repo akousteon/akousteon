@@ -10,9 +10,12 @@ pub struct TemplateApp {
     timespan: Timespan,
     speeches: Vec<Speech>,
     current_speaker: String,
-    speakers: Vec<String>,
+    next_speakers: Vec<String>,
     categories: Vec<String>,
     deleted_speeches: Vec<usize>,
+    new_speaker: String,
+    categorie_new_speaker: String,
+    speakers: Vec<(String, String)>,
 }
 
 impl Default for TemplateApp {
@@ -21,9 +24,12 @@ impl Default for TemplateApp {
             timespan: Timespan::new(),
             speeches: Vec::new(),
             current_speaker: String::new(),
-            speakers: Vec::new(),
+            next_speakers: Vec::new(),
             categories: Vec::new(),
             deleted_speeches: Vec::new(),
+            new_speaker: String::new(),
+            categorie_new_speaker: String::new(),
+            speakers: Vec::new(),
         }
     }
 }
@@ -74,13 +80,46 @@ impl eframe::App for TemplateApp {
                     ));
                     ui.label("Ordre des tours de parole");
                     ui.label("(une personne par ligne)");
-                    let mut s_speakers = self.speakers.join("\n");
+                    let mut s_speakers = self.next_speakers.join("\n");
                     if ui.text_edit_multiline(&mut s_speakers).changed() {
-                        self.speakers = s_speakers
+                        self.next_speakers = s_speakers
                             .split('\n')
                             .map(|x| x.to_owned())
                             .collect::<Vec<String>>()
                     };
+
+                    ui.label("Ajouter une personne dans la liste des tours de parole");
+                    for speaker in self.speakers.iter() {
+                        ui.horizontal(|ui| {
+                            ui.label(speaker.0.clone());
+                            if ui.button("+").clicked() {
+                                // TODO: Keep category of the speaker
+                                self.next_speakers.push(speaker.0.clone())
+                            }
+                        });
+                    }
+
+                    ui.label("Ajouter un·e orateur·ice");
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.new_speaker);
+
+                        egui::ComboBox::from_id_source("new_speaker")
+                            .selected_text(&self.categorie_new_speaker)
+                            .show_ui(ui, |ui| {
+                                for category in self.categories.iter() {
+                                    if ui.selectable_label(false, category).clicked() {
+                                        self.categorie_new_speaker = category.to_string();
+                                    };
+                                }
+                            });
+
+                        if ui.button("+").clicked() {
+                            self.speakers.push((
+                                self.new_speaker.clone(),
+                                self.categorie_new_speaker.clone(),
+                            ));
+                        }
+                    });
                 });
                 columns[1].vertical_centered(|ui| {
                     ui.horizontal(|ui| {
@@ -108,9 +147,10 @@ impl eframe::App for TemplateApp {
                         if ui.button(label_button).clicked() {
                             if !self.timespan.is_running() {
                                 self.timespan.start();
-                                if self.current_speaker.is_empty() && !self.speakers.is_empty() {
-                                    self.current_speaker = self.speakers[0].clone();
-                                    self.speakers.remove(0);
+                                if self.current_speaker.is_empty() && !self.next_speakers.is_empty()
+                                {
+                                    self.current_speaker = self.next_speakers[0].clone();
+                                    self.next_speakers.remove(0);
                                 }
                             } else {
                                 self.timespan.stop()
@@ -131,9 +171,9 @@ impl eframe::App for TemplateApp {
                             });
                             self.timespan.reset();
                             self.current_speaker.clear();
-                            if !self.speakers.is_empty() {
-                                self.current_speaker = self.speakers[0].clone();
-                                self.speakers.remove(0);
+                            if !self.next_speakers.is_empty() {
+                                self.current_speaker = self.next_speakers[0].clone();
+                                self.next_speakers.remove(0);
                             }
                         }
                     });
