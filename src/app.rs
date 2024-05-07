@@ -1,5 +1,6 @@
 use crate::components::{to_display, to_display_h_m_s, Speech, Timespan};
 use egui::ScrollArea;
+use rfd::{MessageDialog, MessageDialogResult};
 use std::future::Future;
 use web_time::Duration;
 
@@ -167,10 +168,19 @@ impl eframe::App for TemplateApp {
                         if ui.button("Export").clicked() {
                             self.export_speeches_to_csv_file();
                         }
-                        // TODO : ask confirmation
                         if ui.button("Clear").clicked() {
-                            self.timespan.reset();
-                            self.speeches.clear();
+                            let dialog = MessageDialog::new()
+                                .set_title("Confirmation de l'effacement")
+                                .set_description("Confirmez l'effacement des tours de parole")
+                                .set_buttons(rfd::MessageButtons::YesNo);
+                            let result = dialog.show();
+                            match result {
+                                MessageDialogResult::Yes | MessageDialogResult::Ok => {
+                                    self.timespan.reset();
+                                    self.speeches.clear();
+                                }
+                                _ => {}
+                            }
                         }
                     });
 
