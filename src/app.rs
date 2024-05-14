@@ -86,7 +86,7 @@ impl eframe::App for TemplateApp {
                     for index_speaker in self.want_speak.clone() {
                         ui.horizontal(|ui| {
                             if ui.button("x").clicked() {
-                                self.deleted_speakers.push(index_speaker);
+                                self.want_speak.remove(index_speaker);
                             }
                             ui.label(self.speakers.get_speaker(index_speaker).0);
                         });
