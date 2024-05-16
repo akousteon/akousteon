@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use web_time::{Duration, Instant};
 
 pub fn to_display(duration: Duration) -> String {
@@ -54,6 +56,14 @@ impl Timespan {
         }
     }
 
+    pub fn start_or_stop(&mut self) {
+        if !self.is_running() {
+            self.start();
+        } else {
+            self.stop()
+        }
+    }
+
     pub fn reset(&mut self) {
         // TODO : call new instead
         self.elapsed = Duration::new(0, 0);
@@ -79,6 +89,7 @@ impl Default for Timespan {
     }
 }
 
+#[derive(Clone)]
 pub struct Speech {
     pub duration: Duration,
     pub category: String,
@@ -100,5 +111,81 @@ impl Speech {
 impl Default for Speech {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub type Order = VecDeque<usize>;
+pub type Speaker = (String, String);
+pub type Speakers = Vec<Speaker>;
+
+pub trait TSpeakers {
+    fn current_speaker(&self, order: &Order) -> Speaker;
+    fn next_speaker(&self, order: &Order) -> Speaker;
+    fn add_speaker(&mut self, speaker: Speaker);
+    fn delete_speaker(&mut self, speaker: usize, order: &mut Order);
+    fn get_speaker(&self, speaker: usize) -> Speaker;
+    fn speaker_wants_to_speak(&self, speaker: usize, order: &mut Order);
+    fn speaker_spoke(&self, order: &mut Order) -> Speaker;
+}
+
+impl TSpeakers for Speakers {
+    fn current_speaker(&self, order: &Order) -> Speaker {
+        match order.front() {
+            Some(&s) => self
+                .get(s)
+                .unwrap_or(&(String::new(), String::new()))
+                .clone(),
+            None => (String::new(), String::new()),
+        }
+    }
+
+    fn next_speaker(&self, order: &Order) -> Speaker {
+        match order.get(1) {
+            Some(&s) => self
+                .get(s)
+                .unwrap_or(&(String::new(), String::new()))
+                .clone(),
+            None => (String::new(), String::new()),
+        }
+    }
+
+    fn add_speaker(&mut self, speaker: Speaker) {
+        self.push(speaker);
+    }
+
+    fn delete_speaker(&mut self, speaker: usize, order: &mut Order) {
+        self.remove(speaker);
+        // Shift index in order
+        order.retain_mut(|x| {
+            if *x != speaker {
+                if *x > speaker {
+                    *x -= 1;
+                }
+                true
+            } else {
+                false
+            }
+        });
+    }
+
+    fn get_speaker(&self, speaker: usize) -> Speaker {
+        match self.get(speaker) {
+            Some(s) => s.clone(),
+            None => (String::new(), String::new()),
+        }
+    }
+
+    fn speaker_wants_to_speak(&self, speaker: usize, order: &mut Order) {
+        order.push_back(speaker);
+    }
+
+    fn speaker_spoke(&self, order: &mut Order) -> Speaker {
+        match order.pop_front() {
+            Some(s) => self
+                .get(s)
+                .unwrap_or(&(String::new(), String::new()))
+                .clone(),
+            None => (String::new(), String::new()),
+        }
     }
 }

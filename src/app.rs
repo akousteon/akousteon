@@ -1,7 +1,9 @@
-use crate::components::{to_display, to_display_h_m_s, Speech, Timespan};
+use crate::components::{
+    to_display, to_display_h_m_s, Order, Speakers, Speech, TSpeakers, Timespan,
+};
 use egui::ScrollArea;
 use rfd::{MessageDialog, MessageDialogResult};
-use std::future::Future;
+use std::{collections::VecDeque, future::Future};
 use web_time::Duration;
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -9,10 +11,12 @@ use web_time::Duration;
 pub struct TemplateApp {
     timespan: Timespan,
     speeches: Vec<Speech>,
-    current_speaker: String,
-    speakers: Vec<String>,
+    want_speak: Order,
+    speakers: Speakers,
+    deleted_speakers: Vec<usize>,
     categories: Vec<String>,
-    deleted_speeches: Vec<usize>,
+    new_speaker: String,
+    categorie_new_speaker: String,
 }
 
 impl Default for TemplateApp {
@@ -20,10 +24,12 @@ impl Default for TemplateApp {
         Self {
             timespan: Timespan::new(),
             speeches: Vec::new(),
-            current_speaker: String::new(),
+            want_speak: VecDeque::new(),
             speakers: Vec::new(),
+            deleted_speakers: Vec::new(),
             categories: Vec::new(),
-            deleted_speeches: Vec::new(),
+            new_speaker: String::new(),
+            categorie_new_speaker: String::new(),
         }
     }
 }
@@ -70,17 +76,58 @@ impl eframe::App for TemplateApp {
                 columns[0].vertical(|ui| {
                     ui.label(format!(
                         "Tour de parole en cours : {}",
-                        self.current_speaker
+                        self.speakers.current_speaker(&self.want_speak).0
+                    ));
+                    ui.label(format!(
+                        "Tour de parole suivant : {}",
+                        self.speakers.next_speaker(&self.want_speak).0
                     ));
                     ui.label("Ordre des tours de parole");
-                    ui.label("(une personne par ligne)");
-                    let mut s_speakers = self.speakers.join("\n");
-                    if ui.text_edit_multiline(&mut s_speakers).changed() {
-                        self.speakers = s_speakers
-                            .split('\n')
-                            .map(|x| x.to_owned())
-                            .collect::<Vec<String>>()
-                    };
+                    for index_speaker in self.want_speak.clone() {
+                        ui.horizontal(|ui| {
+                            if ui.button("x").clicked() {
+                                self.want_speak.remove(index_speaker);
+                            }
+                            ui.label(self.speakers.get_speaker(index_speaker).0);
+                        });
+                    }
+
+                    ui.label("Ajouter une personne dans la liste des tours de parole");
+                    for (i, speaker) in self.speakers.clone().iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            ui.label(speaker.0.clone());
+                            if ui.button("+").clicked() {
+                                self.speakers
+                                    .speaker_wants_to_speak(i, &mut self.want_speak);
+                            }
+
+                            if ui.button("x").clicked() {
+                                self.speakers.delete_speaker(i, &mut self.want_speak);
+                            }
+                        });
+                    }
+
+                    ui.label("Ajouter un·e orateur·ice");
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.new_speaker);
+
+                        egui::ComboBox::from_id_source("new_speaker")
+                            .selected_text(&self.categorie_new_speaker)
+                            .show_ui(ui, |ui| {
+                                for category in self.categories.iter() {
+                                    if ui.selectable_label(false, category).clicked() {
+                                        self.categorie_new_speaker = category.to_string();
+                                    };
+                                }
+                            });
+
+                        if ui.button("+").clicked() {
+                            self.speakers.add_speaker((
+                                self.new_speaker.clone(),
+                                self.categorie_new_speaker.clone(),
+                            ));
+                        }
+                    });
                 });
                 columns[1].vertical_centered(|ui| {
                     ui.horizontal(|ui| {
@@ -98,23 +145,15 @@ impl eframe::App for TemplateApp {
                             .ctx
                             .request_repaint_after(Duration::new(0, 10_000_000));
 
-                        let label_button = {
+                        let label_button_play = {
                             if self.timespan.is_running() {
                                 "⏸"
                             } else {
                                 "⏵"
                             }
                         };
-                        if ui.button(label_button).clicked() {
-                            if !self.timespan.is_running() {
-                                self.timespan.start();
-                                if self.current_speaker.is_empty() && !self.speakers.is_empty() {
-                                    self.current_speaker = self.speakers[0].clone();
-                                    self.speakers.remove(0);
-                                }
-                            } else {
-                                self.timespan.stop()
-                            }
+                        if ui.button(label_button_play).clicked() {
+                            self.timespan.start_or_stop();
                         }
 
                         if ui
@@ -127,26 +166,17 @@ impl eframe::App for TemplateApp {
                             self.timespan.stop();
                             self.speeches.push(Speech {
                                 duration: self.timespan.elapsed,
-                                category: String::new(),
+                                category: self.speakers.current_speaker(&self.want_speak).1,
                             });
                             self.timespan.reset();
-                            self.current_speaker.clear();
-                            if !self.speakers.is_empty() {
-                                self.current_speaker = self.speakers[0].clone();
-                                self.speakers.remove(0);
-                            }
+                            self.speakers.speaker_spoke(&mut self.want_speak);
                         }
                     });
                     ScrollArea::vertical().show(ui, |ui| {
-                        for i in self.deleted_speeches.iter() {
-                            self.speeches.remove(*i);
-                        }
-                        self.deleted_speeches.clear();
-
-                        for (i, speech) in self.speeches.iter_mut().enumerate().rev() {
+                        for (i, speech) in self.speeches.clone().into_iter().enumerate().rev() {
                             ui.horizontal(|ui| {
                                 if ui.button("x").clicked() {
-                                    self.deleted_speeches.push(i);
+                                    self.speeches.remove(i);
                                 }
                                 ui.label(to_display(speech.duration));
 
@@ -155,7 +185,8 @@ impl eframe::App for TemplateApp {
                                     .show_ui(ui, |ui| {
                                         for category in self.categories.iter() {
                                             if ui.selectable_label(false, category).clicked() {
-                                                speech.category = category.to_string();
+                                                self.speeches.get_mut(i).unwrap().category =
+                                                    category.to_string();
                                             };
                                         }
                                     });
