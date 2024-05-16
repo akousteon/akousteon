@@ -1,0 +1,50 @@
+{
+  "current_speech": {
+    "fr": "Tour de parole en cours",
+    "en": "Current speech"
+  },
+  "next_speech": {
+    "fr": "Tour de parole suivant",
+    "en": "Next speech"
+  },
+  "speeches_order": {
+    "fr": "Ordre des tours de parole",
+    "en": "Speeches order"
+  },
+  "add_speaker_in_order": {
+    "fr": "Ajouter une personne dans la liste des tours de parole",
+    "en": ""
+  },
+  "add_speaker": {
+    "fr": "Ajouter un·e orateur·ice",
+    "en": "Add a speaker"
+  },
+  "export": {
+    "fr": "Exporter",
+    "en": "Export"
+  },
+  "clear": {
+    "fr": "Effacer",
+    "en": "Clear"
+  },
+  "confirm_clear": {
+    "fr": "Confirmation de l'effacement",
+    "en": ""
+  },
+  "confirm_clear_speeches": {
+    "fr": "Confirmez l'effacement des tours de parole",
+    "en": ""
+  },
+  "category_per_line": {
+    "fr": "Une catégorie par ligne",
+    "en": "A category per line"
+  },
+  "total_time_category": {
+    "fr": "Temps total par catégorie",
+    "en": ""
+  },
+  "time_per_category": {
+    "fr": "prises de paroles des",
+    "en": ""
+  }
+}

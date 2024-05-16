@@ -2,6 +2,7 @@ use crate::components::{
     to_display, to_display_h_m_s, Order, Speakers, Speech, TSpeakers, Timespan,
 };
 use egui::ScrollArea;
+use locales::t;
 use rfd::{MessageDialog, MessageDialogResult};
 use std::{collections::VecDeque, future::Future};
 use web_time::Duration;
@@ -16,6 +17,7 @@ pub struct TemplateApp {
     categories: Vec<String>,
     new_speaker: String,
     categorie_new_speaker: String,
+    language: String,
 }
 
 impl Default for TemplateApp {
@@ -28,6 +30,7 @@ impl Default for TemplateApp {
             categories: Vec::new(),
             new_speaker: String::new(),
             categorie_new_speaker: String::new(),
+            language: String::new(),
         }
     }
 }
@@ -73,14 +76,16 @@ impl eframe::App for TemplateApp {
             ui.columns(3, |columns| {
                 columns[0].vertical(|ui| {
                     ui.label(format!(
-                        "Tour de parole en cours : {}",
+                        "{} : {}",
+                        t!("current_speech", self.language),
                         self.speakers.current_speaker(&self.want_speak).0
                     ));
                     ui.label(format!(
-                        "Tour de parole suivant : {}",
+                        "{} : {}",
+                        t!("next_speech", self.language),
                         self.speakers.next_speaker(&self.want_speak).0
                     ));
-                    ui.label("Ordre des tours de parole");
+                    ui.label(t!("speeches_order", self.language));
                     for index_speaker in self.want_speak.clone() {
                         ui.horizontal(|ui| {
                             if ui.button("x").clicked() {
@@ -90,7 +95,7 @@ impl eframe::App for TemplateApp {
                         });
                     }
 
-                    ui.label("Ajouter une personne dans la liste des tours de parole");
+                    ui.label(t!("add_speaker_in_order", self.language));
                     for (i, speaker) in self.speakers.clone().iter().enumerate() {
                         ui.horizontal(|ui| {
                             ui.label(speaker.0.clone());
@@ -105,7 +110,7 @@ impl eframe::App for TemplateApp {
                         });
                     }
 
-                    ui.label("Ajouter un·e orateur·ice");
+                    ui.label(t!("add_speaker", self.language));
                     ui.horizontal(|ui| {
                         ui.text_edit_singleline(&mut self.new_speaker);
 
@@ -194,13 +199,13 @@ impl eframe::App for TemplateApp {
                 });
                 columns[2].vertical_centered(|ui| {
                     ui.horizontal(|ui| {
-                        if ui.button("Export").clicked() {
+                        if ui.button(t!("export", self.language)).clicked() {
                             self.export_speeches_to_csv_file();
                         }
-                        if ui.button("Clear").clicked() {
+                        if ui.button(t!("clear", self.language)).clicked() {
                             let dialog = MessageDialog::new()
-                                .set_title("Confirmation de l'effacement")
-                                .set_description("Confirmez l'effacement des tours de parole")
+                                .set_title(t!("confirm_clear", self.language))
+                                .set_description(t!("confirm_clear_speeches", self.language))
                                 .set_buttons(rfd::MessageButtons::YesNo);
                             let result = dialog.show();
                             match result {
@@ -211,10 +216,19 @@ impl eframe::App for TemplateApp {
                                 _ => {}
                             }
                         }
+                        egui::ComboBox::from_id_source("combobox_language")
+                            .selected_text(&self.language)
+                            .show_ui(ui, |ui| {
+                                for language in ["fr", "en"] {
+                                    if ui.selectable_label(false, language).clicked() {
+                                        self.language = language.to_string();
+                                    }
+                                }
+                            });
                     });
 
                     ui.add_space(20.);
-                    ui.label("Une catégorie par ligne");
+                    ui.label(t!("category_per_line", self.language));
                     let mut s_categories = self.categories.join("\n");
                     if ui.text_edit_multiline(&mut s_categories).changed() {
                         self.categories = s_categories
@@ -223,7 +237,7 @@ impl eframe::App for TemplateApp {
                             .collect::<Vec<String>>();
                     }
 
-                    ui.label("Temps total par catégorie");
+                    ui.label(t!("total_time_category", self.language));
                     for category in self.categories.iter() {
                         let sum: Duration = self
                             .speeches
@@ -233,11 +247,12 @@ impl eframe::App for TemplateApp {
                             .sum();
 
                         ui.label(format!(
-                            "{} prises de paroles des {} : {}",
+                            "{} {} {} : {}",
                             self.speeches
                                 .iter()
                                 .filter(|x| x.category == *category)
                                 .count(),
+                            t!("time_per_category", self.language),
                             category,
                             to_display_h_m_s(sum)
                         ));
