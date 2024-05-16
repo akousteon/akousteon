@@ -13,7 +13,6 @@ pub struct TemplateApp {
     speeches: Vec<Speech>,
     want_speak: Order,
     speakers: Speakers,
-    deleted_speakers: Vec<usize>,
     categories: Vec<String>,
     new_speaker: String,
     categorie_new_speaker: String,
@@ -26,7 +25,6 @@ impl Default for TemplateApp {
             speeches: Vec::new(),
             want_speak: VecDeque::new(),
             speakers: Vec::new(),
-            deleted_speakers: Vec::new(),
             categories: Vec::new(),
             new_speaker: String::new(),
             categorie_new_speaker: String::new(),
@@ -235,7 +233,11 @@ impl eframe::App for TemplateApp {
                             .sum();
 
                         ui.label(format!(
-                            "Temps total des {} : {}",
+                            "{} prises de paroles des {} : {}",
+                            self.speeches
+                                .iter()
+                                .filter(|x| x.category == *category)
+                                .count(),
                             category,
                             to_display_h_m_s(sum)
                         ));
